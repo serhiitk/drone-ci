@@ -1,0 +1,53 @@
+---
+- name: Up the Drone Server and Drone Runner in containers for GitLab (Docker-Server host)
+  gather_facts: no
+  hosts: docker_server
+  become: yes
+
+  vars_files:
+    - vars/default_vars.yml
+
+  tasks:
+
+    - name: Run Drone Server in container
+      docker_container:
+        name: "drone-server"
+        image: "drone/drone:1"
+        env:
+          DRONE_GITLAB_SERVER: "{{ DRONE_GITLAB_SERVER }}"
+          DRONE_GITLAB_CLIENT_ID: "{{ DRONE_GITLAB_CLIENT_ID }}"
+          DRONE_GITLAB_CLIENT_SECRET: "{{ DRONE_GITLAB_CLIENT_SECRET }}"
+          DRONE_RPC_SECRET: "{{ DRONE_RPC_SECRET }}"
+          DRONE_SERVER_HOST: "{{ DRONE_SERVER_HOST }}"
+          DRONE_SERVER_PROTO: "{{ DRONE_SERVER_PROTO }}"
+          DRONE_USER_CREATE: "username:drone-admin,machine:false,admin:true"
+          DRONE_RUNNER_CAPACITY: "2"
+          DRONE_LOGS_DEBUG: "true"
+        ports:
+          - "{{ drone_server_http_port }}:80"
+          - "{{ drone_server_https_port }}:443"
+        restart_policy: always
+        etc_hosts: "{{ container_etc_hosts }}"
+        volumes:
+          - "/var/lib/drone:/data"
+
+    - name: Run Drone Runner in container
+      docker_container:
+        name: "drone-runner"
+        image: "drone/drone-runner-docker:1"
+        env:
+          DRONE_RPC_PROTO: "{{ DRONE_RPC_PROTO }}"
+          DRONE_RPC_HOST: "{{ DRONE_RPC_HOST }}"
+          DRONE_RPC_SECRET: "{{ DRONE_RPC_SECRET }}"
+          DRONE_RUNNER_CAPACITY: "2"
+          DRONE_RUNNER_NAME: "${HOSTNAME}"
+          DRONE_LOGS_DEBUG: "true"
+          DRONE_UI_USERNAME: "{{ DRONE_UI_USERNAME }}"
+          DRONE_UI_PASSWORD: "{{ DRONE_UI_PASSWORD }}"
+        ports:
+          - "3000:3000"
+        restart_policy: always
+        etc_hosts: "{{ container_etc_hosts }}"
+        volumes:
+          - "/var/run/docker.sock:/var/run/docker.sock"
+...

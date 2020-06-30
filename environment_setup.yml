@@ -1,0 +1,57 @@
+---
+- name: Preparation Docker server (Docker server)
+  gather_facts: no
+  hosts: docker_server
+  become: yes
+
+  vars_files:
+    - vars/default_vars.yml
+
+  tasks:
+
+    - name: Add needed hosts URLs to /etc/hosts file (Docker server)
+      lineinfile:
+        path: /etc/hosts
+        regexp: ".*{{ item['name'] }}$"
+        line: "{{ item['ip'] }}\t{{ item['name'] }}"
+      loop:
+        - ip: "{{ gitlab_host_ip }}"
+          name: "{{ gitlab_url_domain }}"
+        - ip: "{{ nexus_host_ip }}"
+          name: "{{ nexus_url_domain }}"
+        - ip: "{{ drone_host_ip }}"
+          name: "{{ drone_url_domain }}"
+
+    - name: Create certs.d directory for SSL certificate of Nexus repository (Docker server)
+      file:
+        path: /etc/docker/certs.d/{{ nexus_repository_url }}
+        state: directory
+
+    - name: Copy repository SSL certificate (Docker server)
+      copy:
+        src: ./hosts/Nexus-server/certs/ca.crt
+        dest: /etc/docker/certs.d/{{ nexus_repository_url }}
+
+- name: Preparation GitLab server (GitLab server)
+  gather_facts: no
+  hosts: ext_gitlabci_server
+  become: yes
+
+  vars_files:
+    - vars/default_vars.yml
+
+  tasks:
+
+    - name: Add needed hosts URLs to /etc/hosts file (GitLab server)
+      lineinfile:
+        path: /etc/hosts
+        regexp: ".*{{ item['name'] }}$"
+        line: "{{ item['ip'] }}\t{{ item['name'] }}"
+      loop:
+        - ip: "{{ gitlab_host_ip }}"
+          name: "{{ gitlab_url_domain }}"
+        - ip: "{{ nexus_host_ip }}"
+          name: "{{ nexus_url_domain }}"
+        - ip: "{{ drone_host_ip }}"
+          name: "{{ drone_url_domain }}"
+...

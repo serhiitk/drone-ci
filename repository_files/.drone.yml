@@ -1,0 +1,70 @@
+---
+.extra_gitlab_host: &extra_gitlab_host
+- "gitlab.example.com:192.168.16.161"
+
+.extra_nexus_host: &extra_nexus_host
+- "nexus.example.com:192.168.77.96"
+
+.volumes_docker_sock: &volumes_docker_sock
+  volumes:
+    - name: docker_sock
+      path: /var/run/docker.sock
+
+##### Pipeline start
+kind: pipeline
+type: docker
+name: ci-drone-test
+
+clone:
+  disable: true
+
+environment:
+  CFG_GITLAB_URL_SCHEMA: "http"
+  CFG_GITLAB_HOST_NAME: "gitlab.example.com"
+  CFG_GITLAB_PROJECT_NAME: "drone-test"
+  CFG_NEXUS_HOST_NAME: "nexus.example.com"
+  CFG_NEXUS_REPOSITORY_PORT: 18092
+  CFG_NEXUS_REPOSITORY_NAME: "drone-test-app1"
+  CFG_TEST_CONTAINER_NAME: "drone-test-env-app1"
+
+steps:
+  - name: local-clone
+    image: docker:git
+    extra_hosts: *extra_gitlab_host
+    commands:
+      - ping -c 1 $CFG_GITLAB_HOST_NAME
+      - git clone --depth 1 $CFG_GITLAB_URL_SCHEMA://$CFG_GITLAB_HOST_NAME/drone-admin/$CFG_GITLAB_PROJECT_NAME.git .
+
+  - name: build_image
+    image: docker:latest
+    <<: *volumes_docker_sock
+    commands:
+      - docker info
+      - docker build -t $CFG_NEXUS_HOST_NAME:$CFG_NEXUS_REPOSITORY_PORT/$CFG_NEXUS_REPOSITORY_NAME -f Dockerfile .
+
+  - name: run_test_application
+    image: docker:latest
+    <<: *volumes_docker_sock
+    commands:
+      - docker rm -f $CFG_TEST_CONTAINER_NAME 2>/dev/null || true
+      - docker run --name $CFG_TEST_CONTAINER_NAME -d -p 10081:80 $CFG_NEXUS_HOST_NAME:$CFG_NEXUS_REPOSITORY_PORT/$CFG_NEXUS_REPOSITORY_NAME
+      - echo "Application started at http://docker.example.com:10081/"
+
+  - name: push_nexus_repository
+    image: docker:latest
+    extra_hosts: *extra_nexus_host
+    <<: *volumes_docker_sock
+    environment:
+      DRONE_NEXUS_USER:
+        from_secret: DRONE_NEXUS_USER
+      DRONE_NEXUS_PASS:
+        from_secret: DRONE_NEXUS_PASS
+    commands:
+      - docker login -u $DRONE_NEXUS_USER -p $DRONE_NEXUS_PASS $CFG_NEXUS_HOST_NAME:$CFG_NEXUS_REPOSITORY_PORT
+      - docker push $CFG_NEXUS_HOST_NAME:$CFG_NEXUS_REPOSITORY_PORT/$CFG_NEXUS_REPOSITORY_NAME
+
+volumes:
+  - name: docker_sock
+    host:
+      path: /var/run/docker.sock
+...

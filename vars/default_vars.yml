@@ -1,0 +1,37 @@
+---
+  gitlab_host_ip: "192.168.16.161"
+  gitlab_url_domain: "gitlab.example.com"
+  gitlab_url_schema: "http"
+
+  drone_host_ip: "192.168.77.96"
+  drone_url_domain: "drone.example.com"
+  drone_server_http_port: 10080
+  drone_server_https_port: 10443
+
+  nexus_host_ip: "192.168.77.96"
+  nexus_url_domain: "nexus.example.com"
+  nexus_repository_port: 18092
+  nexus_repository_url: "{{ nexus_url_domain }}:{{ nexus_repository_port }}"
+
+  container_etc_hosts: >
+     {
+        '{{ gitlab_url_domain }}' : '{{ gitlab_host_ip }}',
+        '{{ nexus_url_domain }}' : '{{ nexus_host_ip }}',
+        '{{ drone_url_domain }}' : '{{ drone_host_ip }}'
+     }
+
+  DRONE_GITLAB_SERVER: "{{ gitlab_url_schema }}://{{ gitlab_url_domain }}"
+  DRONE_GITLAB_CLIENT_ID: "dbcc8ae847489c7fdb1c12c51ffa7f714f8f0d4da620baf37c22ee4c6ac3ec85"
+  DRONE_GITLAB_CLIENT_SECRET: "3fdddfed69dbaba04cdee0c2635123ad9ac9166d14b6c7f3cd7ed1e40bccb073"
+
+  DRONE_RPC_SECRET: "3657ceb8a8dc2edd930ab60a71f75063" # plaintext or a HASH as well
+
+  DRONE_SERVER_PROTO: "http"
+  DRONE_SERVER_HOST: "{{ drone_url_domain }}:{{ drone_server_http_port }}"
+
+  DRONE_RPC_PROTO: "http"
+  DRONE_RPC_HOST: "{{ drone_url_domain }}:{{ drone_server_http_port }}"
+
+  DRONE_UI_USERNAME: "root"
+  DRONE_UI_PASSWORD: "root"
+...
